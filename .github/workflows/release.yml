@@ -36,8 +36,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "RiskMulator ${{ github.ref_name }}"
+          # __VERSION__ is replaced by tauri-action with the app version, so a
+          # workflow_dispatch run creates the tag + release itself (no tag
+          # push needed). Tag pushes reuse the same path.
+          tagName: v__VERSION__
+          releaseName: "RiskMulator v__VERSION__"
           releaseDraft: false
           prerelease: false
           args: --target universal-apple-darwin
