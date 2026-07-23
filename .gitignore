@@ -1,0 +1,32 @@
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/Cargo.lock.bak
+
+# Local save data (SQLite dev databases)
+*.sqlite
+*.sqlite3
+*.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
