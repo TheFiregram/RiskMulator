@@ -895,3 +895,9 @@ body {
 .objective-done {
   border-color: rgba(63, 185, 80, 0.35);
 }
+
+/* Fallback mouse-look (no Pointer Lock API): hide the cursor over the world
+   so it doesn't sit in the middle of the view while driving the camera. */
+body.fallback-look #viewport {
+  cursor: none;
+}

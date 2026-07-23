@@ -9,6 +9,7 @@ export class InputManager {
   private mouseDelta: MouseDelta = { x: 0, y: 0 };
   private canvas: HTMLCanvasElement;
   private enabled = false;
+  private fallbackLook = false;
 
   onPointerLockChange?: (locked: boolean) => void;
 
@@ -22,7 +23,7 @@ export class InputManager {
     });
     document.addEventListener("keyup", (e) => this.keys.delete(e.code));
     document.addEventListener("mousemove", (e) => {
-      if (!this.isPointerLocked) return;
+      if (!this.isLookEngaged) return;
       this.mouseDelta.x += e.movementX;
       this.mouseDelta.y += e.movementY;
     });
@@ -37,6 +38,19 @@ export class InputManager {
     return document.pointerLockElement === this.canvas;
   }
 
+  get isPointerLockSupported(): boolean {
+    return typeof this.canvas.requestPointerLock === "function";
+  }
+
+  /** True while mouse movement should drive the camera (locked or fallback). */
+  get isLookEngaged(): boolean {
+    return this.isPointerLocked || (this.fallbackLook && this.enabled);
+  }
+
+  get isFallbackLook(): boolean {
+    return this.fallbackLook;
+  }
+
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!enabled) {
@@ -45,8 +59,18 @@ export class InputManager {
     }
   }
 
+  /**
+   * Mouse-look without pointer lock, for WebViews where the Pointer Lock API
+   * is missing or refuses to engage (WKWebView on macOS). The OS cursor stays
+   * visible and stops at screen edges — imperfect, but the game is playable.
+   */
+  setFallbackLook(on: boolean): void {
+    this.fallbackLook = on;
+    document.body.classList.toggle("fallback-look", on);
+  }
+
   async requestPointerLock(): Promise<void> {
-    if (this.isPointerLocked) return;
+    if (this.isPointerLocked || !this.isPointerLockSupported) return;
     try {
       await this.canvas.requestPointerLock();
     } catch {

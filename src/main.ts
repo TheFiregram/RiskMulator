@@ -14,6 +14,7 @@ class Game {
   private settings!: GameSettings;
   private state: GameState = "menu";
   private room: WhiteRoomScene | null = null;
+  private lockFallback = false;
 
   constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement) {
     this.engine = new Engine(canvas);
@@ -38,7 +39,7 @@ class Game {
       onMessageClosed: () => {
         if (this.state === "playing") {
           this.engine.input.setEnabled(true);
-          void this.engine.input.requestPointerLock();
+          void this.engagePointerLock();
         }
       },
     });
@@ -47,12 +48,13 @@ class Game {
       onOverlayOpened: () => {
         this.engine.input.setEnabled(false);
         this.engine.input.exitPointerLock();
+        this.engine.input.setFallbackLook(false);
         this.ui.setInteractPrompt(null);
       },
       onOverlayClosed: () => {
         if (this.state === "playing") {
           this.engine.input.setEnabled(true);
-          void this.engine.input.requestPointerLock();
+          void this.engagePointerLock();
         }
       },
       setCameraMode: (on) => this.ui.setCameraMode(on),
@@ -71,13 +73,41 @@ class Game {
     });
 
     this.engine.input.onPointerLockChange = (locked) => {
-      if (!locked && this.state === "playing" && !this.ui.isMessageOpen && !this.tablet.isOpen) {
+      if (locked) {
+        // A real lock engaged — leave fallback-look if we were in it.
+        this.lockFallback = false;
+        this.engine.input.setFallbackLook(false);
+      } else if (this.state === "playing" && !this.ui.isMessageOpen && !this.tablet.isOpen) {
         this.pause();
       }
     };
 
     this.engine.start();
     this.ui.showMainMenu();
+  }
+
+  /**
+   * Engages mouse-look: pointer lock where available, otherwise (or when the
+   * WebView silently refuses — WKWebView does) a cursor-based fallback.
+   */
+  private async engagePointerLock(): Promise<void> {
+    const input = this.engine.input;
+    if (this.lockFallback || !input.isPointerLockSupported) {
+      input.setFallbackLook(true);
+      return;
+    }
+    await input.requestPointerLock();
+    setTimeout(() => {
+      if (
+        this.state === "playing" &&
+        !input.isPointerLocked &&
+        !this.ui.isMessageOpen &&
+        !this.tablet.isOpen
+      ) {
+        this.lockFallback = true;
+        input.setFallbackLook(true);
+      }
+    }, 400);
   }
 
   private bindTabletInput(): void {
@@ -93,6 +123,14 @@ class Game {
         // Pointer is already unlocked while the tablet is open, so Esc will
         // not trigger the pause path — close the tablet instead.
         this.tablet.closeTablet();
+      } else if (
+        e.code === "Escape" &&
+        !this.ui.isMessageOpen &&
+        !this.engine.input.isPointerLocked
+      ) {
+        // Fallback-look mode has no pointer lock for Esc to break out of, so
+        // pause directly.
+        this.pause();
       }
     });
 
@@ -101,7 +139,7 @@ class Game {
         e.button === 0 &&
         this.state === "playing" &&
         this.tablet.isCameraMode &&
-        this.engine.input.isPointerLocked &&
+        this.engine.input.isLookEngaged &&
         this.room
       ) {
         void this.tablet.capturePhoto(this.room.player.camera);
@@ -118,6 +156,7 @@ class Game {
       this.ui.showMessage(title, body);
       this.engine.input.setEnabled(false);
       this.engine.input.exitPointerLock();
+      this.engine.input.setFallbackLook(false);
     };
     room.interaction.onFocusChange = (i) => this.ui.setInteractPrompt(i ? i.prompt : null);
 
@@ -129,12 +168,13 @@ class Game {
     this.state = "playing";
     this.ui.showHUD();
     this.engine.input.setEnabled(true);
-    await this.engine.input.requestPointerLock();
+    await this.engagePointerLock();
   }
 
   private pause(): void {
     this.state = "paused";
     this.engine.input.setEnabled(false);
+    this.engine.input.setFallbackLook(false);
     this.ui.showPause();
   }
 
@@ -142,13 +182,14 @@ class Game {
     this.state = "playing";
     this.ui.showHUD();
     this.engine.input.setEnabled(true);
-    await this.engine.input.requestPointerLock();
+    await this.engagePointerLock();
   }
 
   private quitToMenu(): void {
     this.state = "menu";
     this.engine.input.setEnabled(false);
     this.engine.input.exitPointerLock();
+    this.engine.input.setFallbackLook(false);
     this.tablet.endSession();
     this.engine.setScene(null);
     this.room = null;
@@ -175,4 +216,13 @@ class Game {
 
 const canvas = document.querySelector<HTMLCanvasElement>("#viewport")!;
 const uiRoot = document.querySelector<HTMLElement>("#ui-root")!;
+
+// three.js requires WebGL2. Fail with a readable message instead of a blank
+// screen on WebViews that lack it (macOS before Monterey, some VMs).
+if (!canvas.getContext("webgl2")) {
+  throw new Error(
+    "WebGL2 is not available in this WebView. RiskMulator needs WebGL2 — on macOS this requires macOS 12 (Monterey) or newer; also check that hardware acceleration is enabled.",
+  );
+}
+
 new Game(canvas, uiRoot);

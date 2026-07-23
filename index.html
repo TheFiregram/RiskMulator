@@ -6,6 +6,55 @@
     <title>RiskMulator</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="/src/style.css" />
+    <script>
+      // Boot guard: paints startup failures on screen instead of leaving a
+      // blank window. A classic (non-module) inline script so it runs before
+      // — and independently of — the app's module graph; if a bundle chunk
+      // fails to load or evaluate, this still reports it.
+      (function () {
+        var VERSION = "0.2.1";
+        function showFatal(title, detail) {
+          var panel = document.getElementById("boot-guard-panel");
+          if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "boot-guard-panel";
+            panel.style.cssText =
+              "position:fixed;inset:0;z-index:99999;background:#14181f;color:#e8eaf0;" +
+              "font:14px/1.5 monospace;padding:2rem;overflow:auto;white-space:pre-wrap;" +
+              "user-select:text;-webkit-user-select:text";
+            (document.body || document.documentElement).appendChild(panel);
+          }
+          var block = document.createElement("div");
+          block.textContent =
+            "RiskMulator v" + VERSION + " — startup error\n\n" + title + "\n" + detail +
+            "\n\nPlease screenshot this and report it.\n\n";
+          panel.appendChild(block);
+        }
+        window.addEventListener(
+          "error",
+          function (event) {
+            var t = event.target;
+            if (t && t !== window && t.tagName) {
+              showFatal(
+                "Failed to load <" + t.tagName.toLowerCase() + ">",
+                t.src || t.href || "(inline)",
+              );
+              return;
+            }
+            var err = event.error;
+            showFatal(
+              event.message || "Uncaught error",
+              (err && err.stack) || event.filename + ":" + event.lineno,
+            );
+          },
+          true,
+        );
+        window.addEventListener("unhandledrejection", function (event) {
+          var r = event.reason;
+          showFatal("Unhandled promise rejection", (r && r.stack) || String(r || "(no detail)"));
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="app">
