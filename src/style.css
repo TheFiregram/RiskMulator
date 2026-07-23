@@ -22,6 +22,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -33,7 +34,10 @@ body {
 
 #viewport {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: block;
@@ -41,7 +45,10 @@ body {
 
 #ui-root {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   pointer-events: none;
 }
 
@@ -49,7 +56,10 @@ body {
 
 .screen {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: none;
   align-items: center;
   justify-content: center;
@@ -62,7 +72,8 @@ body {
 }
 
 .menu-panel {
-  width: min(420px, 90vw);
+  width: 90vw;
+  max-width: 420px;
   padding: 2.5rem;
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -74,7 +85,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
 }
 
 .brand-mark {
@@ -96,7 +106,6 @@ body {
 .menu-buttons {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   margin-top: 2rem;
 }
 
@@ -137,7 +146,8 @@ body {
 /* ---------- Loading ---------- */
 
 .loading-panel {
-  width: min(480px, 90vw);
+  width: 90vw;
+  max-width: 480px;
   text-align: center;
 }
 
@@ -177,7 +187,6 @@ body {
   margin-top: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
 }
 
 .setting-row label {
@@ -215,7 +224,10 @@ body {
 
 .hud {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: none;
   pointer-events: none;
 }
@@ -259,7 +271,8 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(440px, 90vw);
+  width: 90vw;
+  max-width: 440px;
   padding: 1.75rem;
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -299,7 +312,10 @@ body {
 
 #viewfinder {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: none;
   pointer-events: none;
 }
@@ -343,7 +359,10 @@ body {
 
 #capture-flash {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: #fff;
   opacity: 0;
   pointer-events: none;
@@ -372,7 +391,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
   pointer-events: none;
   z-index: 30;
 }
@@ -384,7 +402,7 @@ body {
   border-left: 3px solid var(--accent);
   border-radius: 8px;
   font-size: 0.9rem;
-  max-width: min(480px, 86vw);
+  max-width: 480px;
   animation: toast-in 0.25s ease-out;
 }
 
@@ -402,12 +420,16 @@ body {
 
 .tablet-overlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: none;
   align-items: center;
   justify-content: center;
   pointer-events: auto;
   background: rgba(5, 8, 14, 0.55);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 
@@ -417,8 +439,10 @@ body {
 
 .tablet-device {
   position: relative;
-  width: min(680px, 94vw);
-  height: min(560px, 88vh);
+  width: 94vw;
+  max-width: 680px;
+  height: 88vh;
+  max-height: 560px;
   padding: 14px;
   background: #14171f;
   border: 1px solid #2a2f3c;
@@ -485,7 +509,6 @@ body {
 .tablet-nav {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
   margin-bottom: 0.9rem;
 }
 
@@ -529,7 +552,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
   padding: 1.1rem 0.5rem 0.9rem;
   background: #131a28;
   border: 1px solid #232a38;
@@ -585,13 +607,11 @@ body {
 .log-list {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
 }
 
 .log-row {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
   padding: 0.6rem;
   background: #131a28;
   border: 1px solid #232a38;
@@ -611,7 +631,6 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
   min-width: 0;
 }
 
@@ -623,7 +642,6 @@ body {
 .log-detail {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
   flex-wrap: wrap;
 }
 
@@ -697,7 +715,6 @@ body {
 .classify-head {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
 }
 
 .classify-photo {
@@ -727,14 +744,12 @@ body {
 .opt-list {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
 }
 
 .opt {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
   padding: 0.5rem 0.4rem;
   background: #131a28;
   border: 1px solid #232a38;
@@ -803,7 +818,6 @@ body {
 
 .feedback-risk {
   display: flex;
-  gap: 0.6rem;
   flex-wrap: wrap;
   margin: 0.8rem 0;
 }
@@ -860,7 +874,6 @@ body {
 
 .matrix-legend {
   display: flex;
-  gap: 0.6rem;
   flex-wrap: wrap;
   margin-top: 0.9rem;
 }
@@ -870,13 +883,11 @@ body {
 .objective-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
 .objective {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
   padding: 0.65rem 0.9rem;
   background: #131a28;
   border: 1px solid #232a38;
@@ -901,3 +912,28 @@ body {
 body.fallback-look #viewport {
   cursor: none;
 }
+
+
+/* ---------- Legacy WebKit (macOS 10.13) compatibility ----------
+   Flex `gap` and the `inset` shorthand are not supported there; spacing for
+   flex containers lives here as margins. Keep it that way in new CSS. */
+
+.brand > * + * { margin-left: 0.75rem; }
+.menu-buttons > * + * { margin-top: 0.75rem; }
+.setting-row > * + * { margin-top: 0.4rem; }
+.setting-row-inline > * + * { margin-top: 0; }
+#toast-stack > * + * { margin-top: 0.5rem; }
+.tablet-nav > * + * { margin-left: 0.75rem; }
+.tablet-tile .tile-label { margin-top: 0.5rem; }
+.tablet-tile .tile-soon { margin-top: 0.35rem; }
+.log-list > * + * { margin-top: 0.6rem; }
+.log-row > * + * { margin-left: 0.8rem; }
+.log-info > * + * { margin-top: 0.35rem; }
+.log-detail > * { margin: 0 0.6rem 0 0; }
+.classify-head > * + * { margin-left: 0.9rem; }
+.opt-list > * + * { margin-top: 0.45rem; }
+.opt > * + * { margin-top: 0.15rem; }
+.feedback-risk > * { margin: 0 0.6rem 0.35rem 0; }
+.matrix-legend > * { margin: 0 0.6rem 0.35rem 0; }
+.objective-list > * + * { margin-top: 0.5rem; }
+.objective > * + * { margin-left: 0.7rem; }

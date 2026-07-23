@@ -217,12 +217,16 @@ class Game {
 const canvas = document.querySelector<HTMLCanvasElement>("#viewport")!;
 const uiRoot = document.querySelector<HTMLElement>("#ui-root")!;
 
-// three.js requires WebGL2. Fail with a readable message instead of a blank
-// screen on WebViews that lack it (macOS before Monterey, some VMs).
-if (!canvas.getContext("webgl2")) {
-  throw new Error(
-    "WebGL2 is not available in this WebView. RiskMulator needs WebGL2 — on macOS this requires macOS 12 (Monterey) or newer; also check that hardware acceleration is enabled.",
-  );
+// three r162 renders through WebGL2 or WebGL1 (old macOS WebViews only have
+// WebGL1). Probe on a throwaway canvas so the real one stays untouched, and
+// fail with a readable message instead of a blank screen if neither exists.
+{
+  const probe = document.createElement("canvas");
+  if (!probe.getContext("webgl2") && !probe.getContext("webgl")) {
+    throw new Error(
+      "WebGL is not available in this WebView. RiskMulator needs hardware-accelerated graphics — check that your system supports WebGL and that acceleration is enabled.",
+    );
+  }
 }
 
 new Game(canvas, uiRoot);

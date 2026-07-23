@@ -25,6 +25,17 @@ cd src-tauri && cargo check   # Verify Rust side
 - `src/tablet/` — the inspection tablet, core gameplay. `TabletSystem` owns state (profile, hazard-log entries, camera mode) and orchestrates capture → detect → draft → assess; `TabletUI` is pure presentation driven through `TabletCallbacks`; `risk.ts` is the domain model (classifications, 5×5 matrix, `scoreAssessment`); `career.ts` maps points → rank. Scenes expose a `hazards: HazardSpec[]` list (reference answer + control options per hazard); photo capture matches the framed hazard by distance (≤8m) + view angle (≤~26°) against that list. `Engine.captureFrame()` re-renders then downscales to a JPEG data URL.
 - `src-tauri/migrations/*.sql` — schema versioned via `tauri-plugin-sql` migrations registered in `lib.rs`. Add new migrations as new files with incremented version numbers; never edit an applied migration.
 
+## Compatibility floor (do not regress)
+
+The shipped app runs in the OS WebView; the oldest supported target is macOS 10.13 High Sierra (WebKit ≈ Safari 13, WebGL1 only). Hard rules:
+
+- `three` is pinned to **0.162.0** — the last line with a WebGL1 fallback (r163 removed it). Do not bump past it while WebGL1 support stands; use only three APIs that exist in r162.
+- CSS: no flex `gap` (use the margin fallbacks at the bottom of `style.css`), no `inset` shorthand (write top/right/bottom/left), avoid `min()/clamp()` in sizes (use width + max-width pairs), prefix `backdrop-filter` and `user-select` with `-webkit-`.
+- Vite `build.target` is `safari12` — leave it.
+- Pointer Lock is unavailable in WKWebView: every look/capture path must also work via `InputManager`'s fallback-look mode (see `Game.engagePointerLock`).
+- The inline boot guard in `index.html` must stay a classic (non-module) script so it reports even module-graph load failures; keep its `VERSION` in sync on releases.
+- Keep `tauri.conf.json` `csp: null` unless remote content ever ships — a hand-written CSP breaks Tauri's injected bootstrap in WKWebView.
+
 ## Conventions
 
 - TypeScript strict; path alias `@/*` → `src/*` (defined in both tsconfig and vite.config).

@@ -12,14 +12,15 @@
       // — and independently of — the app's module graph; if a bundle chunk
       // fails to load or evaluate, this still reports it.
       (function () {
-        var VERSION = "0.2.1";
+        var VERSION = "0.2.2";
         function showFatal(title, detail) {
           var panel = document.getElementById("boot-guard-panel");
           if (!panel) {
             panel = document.createElement("div");
             panel.id = "boot-guard-panel";
             panel.style.cssText =
-              "position:fixed;inset:0;z-index:99999;background:#14181f;color:#e8eaf0;" +
+              "position:fixed;top:0;right:0;bottom:0;left:0;z-index:99999;" +
+              "background:#14181f;color:#e8eaf0;" +
               "font:14px/1.5 monospace;padding:2rem;overflow:auto;white-space:pre-wrap;" +
               "user-select:text;-webkit-user-select:text";
             (document.body || document.documentElement).appendChild(panel);
