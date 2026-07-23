@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     tags: ["v*"]
+    # Branch pushes only release when the commit message opts in with
+    # "[release]" — lets any branch cut a release deliberately.
+    branches: ["**"]
   workflow_dispatch:
 
 permissions:
@@ -12,6 +15,10 @@ jobs:
   macos:
     name: Build macOS app
     runs-on: macos-latest
+    if: >-
+      github.ref_type == 'tag' ||
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[release]')
     steps:
       - uses: actions/checkout@v4
 
