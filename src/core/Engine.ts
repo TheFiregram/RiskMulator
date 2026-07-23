@@ -66,6 +66,26 @@ export class Engine {
     cancelAnimationFrame(this.rafId);
   }
 
+  /**
+   * Captures the current view as a downscaled JPEG data URL. Re-renders first
+   * because the WebGL drawing buffer is not preserved between frames.
+   */
+  captureFrame(targetWidth = 640, quality = 0.72): string | null {
+    if (!this.activeScene) return null;
+    this.renderer.render(this.activeScene.scene, this.activeScene.camera);
+    const source = this.renderer.domElement;
+    if (source.width === 0 || source.height === 0) return null;
+    const width = Math.min(targetWidth, source.width);
+    const height = Math.round(width * (source.height / source.width));
+    const out = document.createElement("canvas");
+    out.width = width;
+    out.height = height;
+    const ctx = out.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(source, 0, 0, width, height);
+    return out.toDataURL("image/jpeg", quality);
+  }
+
   private handleResize(): void {
     const w = window.innerWidth;
     const h = window.innerHeight;

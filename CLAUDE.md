@@ -21,7 +21,8 @@ cd src-tauri && cargo check   # Verify Rust side
 - `src/player/PlayerController.ts` — first-person controller. Collision = XZ clamp against a bounds `Box3` + AABB list; axis-separated movement for wall sliding. Eye height 1.7m — keep interactable geometry spanning that height so the center-screen ray hits it.
 - `src/player/InteractionSystem.ts` — raycast from screen center, 3m range. Register `Interactable`s ({object, prompt, onInteract}); raycast resolves child-mesh hits up to the registered root.
 - `src/save/SaveManager.ts` — settings/save persistence behind a backend interface: SQLite (`tauri-plugin-sql`) when `__TAURI_INTERNALS__` exists, localStorage otherwise. Any new persisted data goes through this abstraction.
-- `src/ui/UIManager.ts` — all DOM UI (menu/loading/settings/pause/HUD) rendered into `#ui-root` over the canvas. Screens toggled via `.visible` class.
+- `src/ui/UIManager.ts` — all DOM UI (menu/loading/settings/pause/HUD/viewfinder/toasts) rendered into `#ui-root` over the canvas. Screens toggled via `.visible` class.
+- `src/tablet/` — the inspection tablet, core gameplay. `TabletSystem` owns state (profile, hazard-log entries, camera mode) and orchestrates capture → detect → draft → assess; `TabletUI` is pure presentation driven through `TabletCallbacks`; `risk.ts` is the domain model (classifications, 5×5 matrix, `scoreAssessment`); `career.ts` maps points → rank. Scenes expose a `hazards: HazardSpec[]` list (reference answer + control options per hazard); photo capture matches the framed hazard by distance (≤8m) + view angle (≤~26°) against that list. `Engine.captureFrame()` re-renders then downscales to a JPEG data URL.
 - `src-tauri/migrations/*.sql` — schema versioned via `tauri-plugin-sql` migrations registered in `lib.rs`. Add new migrations as new files with incremented version numbers; never edit an applied migration.
 
 ## Conventions
@@ -34,4 +35,4 @@ cd src-tauri && cargo check   # Verify Rust side
 
 ## Testing
 
-No test framework yet. Verify changes with `npm run build` (type check + bundle) and by exercising the game in a browser (`npm run dev`). The full flow: menu → Start Training → walk to kiosk/cone/spill → E to inspect → Esc pauses → settings persist across reload.
+No test framework yet. Verify changes with `npm run build` (type check + bundle) and by exercising the game in a browser (`npm run dev`). The full flow: menu → Start Training → read the kiosk briefing → Tab opens the tablet → Camera app → photograph the spill and the damaged cable → assess both in the Hazard Log (classify, likelihood, severity, control) → points/rank update → Esc pauses → settings, points, and the hazard log persist across reload.

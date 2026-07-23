@@ -2,6 +2,7 @@ import { Engine } from "@/core/Engine";
 import { GraphicsSettings } from "@/core/GraphicsSettings";
 import { SaveManager } from "@/save/SaveManager";
 import { UIManager } from "@/ui/UIManager";
+import { TabletSystem } from "@/tablet/TabletSystem";
 import { WhiteRoomScene } from "@/scenes/WhiteRoomScene";
 import type { GameSettings, GameState } from "@/core/types";
 
@@ -9,6 +10,7 @@ class Game {
   private engine: Engine;
   private save = new SaveManager();
   private ui!: UIManager;
+  private tablet!: TabletSystem;
   private settings!: GameSettings;
   private state: GameState = "menu";
   private room: WhiteRoomScene | null = null;
@@ -41,22 +43,70 @@ class Game {
       },
     });
 
+    this.tablet = new TabletSystem(uiRoot, this.save, this.engine, {
+      onOverlayOpened: () => {
+        this.engine.input.setEnabled(false);
+        this.engine.input.exitPointerLock();
+        this.ui.setInteractPrompt(null);
+      },
+      onOverlayClosed: () => {
+        if (this.state === "playing") {
+          this.engine.input.setEnabled(true);
+          void this.engine.input.requestPointerLock();
+        }
+      },
+      setCameraMode: (on) => this.ui.setCameraMode(on),
+      flashCapture: () => this.ui.flashCapture(),
+      showToast: (text) => this.ui.showToast(text),
+    });
+
+    this.bindTabletInput();
+
     // Clicking the world while playing but unlocked (e.g. after reading a
     // message) re-captures the mouse.
     this.engine.renderer.domElement.addEventListener("click", () => {
-      if (this.state === "playing" && !this.ui.isMessageOpen) {
+      if (this.state === "playing" && !this.ui.isMessageOpen && !this.tablet.isOpen) {
         void this.engine.input.requestPointerLock();
       }
     });
 
     this.engine.input.onPointerLockChange = (locked) => {
-      if (!locked && this.state === "playing" && !this.ui.isMessageOpen) {
+      if (!locked && this.state === "playing" && !this.ui.isMessageOpen && !this.tablet.isOpen) {
         this.pause();
       }
     };
 
     this.engine.start();
     this.ui.showMainMenu();
+  }
+
+  private bindTabletInput(): void {
+    document.addEventListener("keydown", (e) => {
+      if (this.state !== "playing") return;
+      if (e.code === "Tab") {
+        // Keep focus in the game; Tab is the tablet key.
+        e.preventDefault();
+        if (!this.ui.isMessageOpen) this.tablet.toggleTablet();
+      } else if (e.code === "KeyQ" && this.tablet.isCameraMode) {
+        this.tablet.exitCameraMode();
+      } else if (e.code === "Escape" && this.tablet.isOpen) {
+        // Pointer is already unlocked while the tablet is open, so Esc will
+        // not trigger the pause path — close the tablet instead.
+        this.tablet.closeTablet();
+      }
+    });
+
+    this.engine.renderer.domElement.addEventListener("mousedown", (e) => {
+      if (
+        e.button === 0 &&
+        this.state === "playing" &&
+        this.tablet.isCameraMode &&
+        this.engine.input.isPointerLocked &&
+        this.room
+      ) {
+        void this.tablet.capturePhoto(this.room.player.camera);
+      }
+    });
   }
 
   private async startTraining(): Promise<void> {
@@ -72,6 +122,7 @@ class Game {
     room.interaction.onFocusChange = (i) => this.ui.setInteractPrompt(i ? i.prompt : null);
 
     await room.load((f) => this.ui.setLoadingProgress(f));
+    await this.tablet.startSession(room.id, room.hazards);
 
     this.room = room;
     this.engine.setScene(room);
@@ -98,6 +149,7 @@ class Game {
     this.state = "menu";
     this.engine.input.setEnabled(false);
     this.engine.input.exitPointerLock();
+    this.tablet.endSession();
     this.engine.setScene(null);
     this.room = null;
     this.ui.showMainMenu();

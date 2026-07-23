@@ -61,6 +61,29 @@ export class UIManager {
     this.showOnly("screen-settings");
   }
 
+  setCameraMode(on: boolean): void {
+    this.root.querySelector<HTMLElement>("#viewfinder")!.classList.toggle("visible", on);
+    this.root.querySelector<HTMLElement>("#hud-hint")!.classList.toggle("hidden", on);
+  }
+
+  flashCapture(): void {
+    const flash = this.root.querySelector<HTMLElement>("#capture-flash")!;
+    flash.classList.remove("flashing");
+    // Force a reflow so re-adding the class restarts the animation.
+    void flash.offsetWidth;
+    flash.classList.add("flashing");
+  }
+
+  showToast(text: string): void {
+    const stack = this.root.querySelector<HTMLElement>("#toast-stack")!;
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = text;
+    stack.appendChild(toast);
+    setTimeout(() => toast.classList.add("toast-out"), 3400);
+    setTimeout(() => toast.remove(), 3800);
+  }
+
   setInteractPrompt(text: string | null): void {
     const el = this.root.querySelector<HTMLElement>("#interact-prompt");
     if (!el) return;
@@ -219,12 +242,22 @@ export class UIManager {
       <div id="hud" class="hud">
         <div id="crosshair"></div>
         <div id="interact-prompt"></div>
+        <div id="viewfinder">
+          <div class="vf-corner vf-tl"></div>
+          <div class="vf-corner vf-tr"></div>
+          <div class="vf-corner vf-bl"></div>
+          <div class="vf-corner vf-br"></div>
+          <div class="vf-label">&#9679; INSPECTION CAM</div>
+          <div class="vf-hint">Click capture &nbsp;&bull;&nbsp; Q close camera &nbsp;&bull;&nbsp; Tab tablet</div>
+        </div>
+        <div id="capture-flash"></div>
+        <div id="toast-stack"></div>
         <div id="hud-message" class="hud-message">
           <h3></h3>
           <p></p>
           <button id="btn-message-close" class="btn btn-primary">Close</button>
         </div>
-        <div id="hud-hint">WASD move &nbsp;&bull;&nbsp; Shift sprint &nbsp;&bull;&nbsp; E interact &nbsp;&bull;&nbsp; Esc pause</div>
+        <div id="hud-hint">WASD move &nbsp;&bull;&nbsp; Shift sprint &nbsp;&bull;&nbsp; E interact &nbsp;&bull;&nbsp; Tab tablet &nbsp;&bull;&nbsp; Esc pause</div>
       </div>
     `;
   }

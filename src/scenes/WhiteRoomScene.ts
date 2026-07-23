@@ -4,6 +4,7 @@ import type { Engine } from "@/core/Engine";
 import { PlayerController } from "@/player/PlayerController";
 import { InteractionSystem } from "@/player/InteractionSystem";
 import type { GameSettings, Interactable } from "@/core/types";
+import type { HazardSpec } from "@/tablet/types";
 
 const ROOM_SIZE = 20;
 const WALL_HEIGHT = 4;
@@ -16,6 +17,9 @@ export class WhiteRoomScene extends GameScene {
 
   /** Fired when an interactable wants to show a message to the player. */
   onShowMessage?: (title: string, body: string) => void;
+
+  /** Hazards the player can photograph and assess on the tablet. */
+  readonly hazards: HazardSpec[] = [];
 
   private colliders: THREE.Box3[] = [];
 
@@ -110,6 +114,7 @@ export class WhiteRoomScene extends GameScene {
     this.addInfoKiosk();
     this.addHazardCone();
     this.addSpillHazard();
+    this.addCableHazard();
   }
 
   private addInfoKiosk(): void {
@@ -144,7 +149,7 @@ export class WhiteRoomScene extends GameScene {
       onInteract: () =>
         this.onShowMessage?.(
           "Welcome to the Training Academy",
-          "This is your risk assessment training environment. Walk around with WASD, look with the mouse, and press E to inspect objects. Future modules will teach you to photograph hazards, classify them, and calculate risk scores.",
+          "This room contains workplace hazards. Press Tab to open your inspection tablet, use the Camera to photograph anything that could cause harm, then assess each find in the Hazard Log: classify it, rate likelihood and severity, and recommend a control measure. Check Objectives on the tablet to track your progress.",
         ),
     });
   }
@@ -210,9 +215,146 @@ export class WhiteRoomScene extends GameScene {
       prompt: "Inspect wet floor",
       onInteract: () =>
         this.onShowMessage?.(
-          "Hazard Identified: Wet Floor",
-          "A liquid spill is a slip hazard. Likelihood: likely if left unmarked in a walkway. Severity: moderate (sprains, fractures). Controls: clean it up immediately, mark the area, and find the source of the leak. In later modules you will photograph and log hazards like this on your inspection tablet.",
+          "Liquid Spill",
+          "An unmarked liquid spill in a walkway. This looks like something worth recording: photograph it with your tablet camera (Tab → Camera), then assess it in the Hazard Log.",
         ),
+    });
+
+    this.hazards.push({
+      id: "wet_floor",
+      name: "Wet floor spill",
+      object: spill,
+      answer: {
+        classification: "slip_trip_fall",
+        likelihood: 4,
+        severity: 3,
+        explanation:
+          "An unmarked spill in a walkway is a slip hazard: harm is likely because everyone crossing the room walks through it, and severity is moderate — slips cause sprains and fractures. The best response removes the hazard rather than just warning about it: clean up the spill, sign the area while it dries, and find the source so it does not recur.",
+        controls: [
+          {
+            id: "ignore",
+            label: "No action — it will dry on its own",
+            quality: "poor",
+            feedback:
+              "Leaving a spill in a walkway keeps the risk unchanged for as long as it takes to dry. Doing nothing is only acceptable when risk is already trivial.",
+          },
+          {
+            id: "sign_only",
+            label: "Place a wet floor sign and move on",
+            quality: "partial",
+            feedback:
+              "Signage lowers the likelihood but the hazard is still there — someone distracted can still slip. Warning is a weak control; prefer removing the hazard.",
+          },
+          {
+            id: "clean_sign_source",
+            label: "Clean it up, sign the area, and find the source",
+            quality: "best",
+            feedback:
+              "Correct: this eliminates the hazard, protects people while the floor dries, and prevents recurrence. Elimination beats warning every time.",
+          },
+          {
+            id: "close_room",
+            label: "Evacuate and close the room until inspected",
+            quality: "poor",
+            feedback:
+              "Disproportionate: controls should match the scale of the risk. Shutting the room down for a small spill wastes resources and erodes trust in safety calls.",
+          },
+        ],
+      },
+    });
+  }
+
+  private addCableHazard(): void {
+    const cableGroup = new THREE.Group();
+
+    // Extension cable snaking across the walkway with a damaged, taped joint.
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-9.8, 0.02, -5.5),
+      new THREE.Vector3(-7.5, 0.02, -4.6),
+      new THREE.Vector3(-5.2, 0.02, -5.0),
+      new THREE.Vector3(-3.0, 0.02, -4.0),
+      new THREE.Vector3(-1.6, 0.02, -4.2),
+    ]);
+    const cable = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 40, 0.022, 6),
+      new THREE.MeshStandardMaterial({ color: 0x22252c, roughness: 0.6 }),
+    );
+    cable.castShadow = true;
+    cableGroup.add(cable);
+
+    // Bright tape wrapped around the damaged section — the visual tell.
+    const tape = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.032, 0.12, 10),
+      new THREE.MeshStandardMaterial({ color: 0xc23b3b, roughness: 0.8 }),
+    );
+    const tapePos = curve.getPoint(0.5);
+    tape.position.set(tapePos.x, 0.025, tapePos.z);
+    tape.rotation.z = Math.PI / 2;
+    tape.rotation.y = 0.4;
+    cableGroup.add(tape);
+
+    const socket = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.08, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0xf0f0f2, roughness: 0.4 }),
+    );
+    socket.position.set(-1.5, 0.04, -4.2);
+    socket.castShadow = true;
+    cableGroup.add(socket);
+
+    this.scene.add(cableGroup);
+
+    this.registerInteractable({
+      object: cableGroup,
+      prompt: "Inspect extension cable",
+      onInteract: () =>
+        this.onShowMessage?.(
+          "Extension Cable",
+          "A cable runs across the walkway and someone has taped over a damaged section. Worth recording: photograph it with your tablet camera (Tab → Camera), then assess it in the Hazard Log.",
+        ),
+    });
+
+    this.hazards.push({
+      id: "damaged_cable",
+      name: "Damaged extension cable",
+      object: cableGroup,
+      answer: {
+        classification: "electrical",
+        altClassifications: ["slip_trip_fall"],
+        likelihood: 3,
+        severity: 4,
+        explanation:
+          "Tape over damaged insulation means the conductors may be exposed — an electrical hazard first, and a trip hazard second because it crosses the walkway. Electric shock makes severity major even though contact is only possible rather than likely. Damaged equipment must come out of service; tape is not a repair.",
+        controls: [
+          {
+            id: "tape_again",
+            label: "Add fresh tape over the damaged section",
+            quality: "poor",
+            feedback:
+              "Tape is not an electrical repair — the insulation is still compromised. This hides the hazard instead of controlling it.",
+          },
+          {
+            id: "reroute_only",
+            label: "Re-route the cable along the wall, out of the walkway",
+            quality: "partial",
+            feedback:
+              "That controls the trip risk, but the damaged insulation — the more severe hazard — is untouched. Always deal with the highest-severity part first.",
+          },
+          {
+            id: "replace_reroute",
+            label: "Take it out of service, replace it, route the new cable along the wall",
+            quality: "best",
+            feedback:
+              "Correct: removal from service eliminates the electrical hazard, and routing the replacement along the wall prevents the trip hazard returning.",
+          },
+          {
+            id: "cone_it",
+            label: "Place a safety cone next to the cable",
+            quality: "poor",
+            feedback:
+              "A cone warns about the trip risk but does nothing about damaged insulation — and people step over cones all day. Warning is the weakest control.",
+          },
+        ],
+      },
     });
   }
 

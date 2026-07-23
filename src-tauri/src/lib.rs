@@ -1,12 +1,20 @@
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 fn migrations() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "create_core_tables",
-        sql: include_str!("../migrations/0001_core.sql"),
-        kind: MigrationKind::Up,
-    }]
+    vec![
+        Migration {
+            version: 1,
+            description: "create_core_tables",
+            sql: include_str!("../migrations/0001_core.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "tablet_photos_and_hazard_workflow",
+            sql: include_str!("../migrations/0002_tablet.sql"),
+            kind: MigrationKind::Up,
+        },
+    ]
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
