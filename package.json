@@ -1,0 +1,24 @@
+{
+  "name": "riskmulator",
+  "version": "0.1.0",
+  "description": "Offline-first desktop training simulator that teaches workplace risk management through immersive gameplay.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-sql": "^2.4.0",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/three": "^0.185.1",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  }
+}
