@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: Build macOS app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          # Universal binary: build for both Apple Silicon and Intel.
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "RiskMulator ${{ github.ref_name }}"
+          releaseDraft: false
+          prerelease: false
+          args: --target universal-apple-darwin
+          releaseBody: |
+            RiskMulator — offline-first workplace risk management training simulator.
+
+            ## macOS install
+
+            1. Download the `.dmg` below, open it, and drag **RiskMulator** into **Applications**.
+            2. The app is not yet signed with an Apple Developer certificate, so on first
+               launch macOS will warn about an unidentified developer. Either:
+               - Right-click the app → **Open** → **Open**, or
+               - If there is no Open option (macOS 15+): open **System Settings →
+                 Privacy & Security**, scroll down, and click **Open Anyway**, or
+               - Terminal fallback: `xattr -cr /Applications/RiskMulator.app`
+            3. All data stays on your machine — the app makes no network calls.
+
+            ## Controls
+
+            WASD move · mouse look · E inspect · **Tab inspection tablet** ·
+            click captures a photo in camera mode · Q closes the camera · Esc pauses
