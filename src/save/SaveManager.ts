@@ -1,5 +1,11 @@
 import { DEFAULT_SETTINGS, type GameSettings } from "@/core/types";
-import type { HazardLogEntry, ProfileRecord } from "@/tablet/types";
+import type {
+  CertificateRecord,
+  HazardLogEntry,
+  ProfileRecord,
+  ReportRecord,
+  ReportSummary,
+} from "@/tablet/types";
 import type { HazardClass } from "@/tablet/risk";
 
 function isTauri(): boolean {
@@ -41,6 +47,17 @@ interface PersistenceBackend {
   ): Promise<number>;
   completeHazardEntry(entryId: number, completion: HazardCompletion): Promise<void>;
   listHazardEntries(profileId: number, sceneId: string): Promise<HazardLogEntry[]>;
+
+  fileReport(
+    profileId: number,
+    sceneId: string,
+    title: string,
+    summary: ReportSummary,
+  ): Promise<number>;
+  listReports(profileId: number): Promise<ReportRecord[]>;
+
+  awardCertificate(profileId: number, moduleId: string, title: string): Promise<number>;
+  listCertificates(profileId: number): Promise<CertificateRecord[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -191,6 +208,62 @@ class SqliteBackend implements PersistenceBackend {
       points: r.points,
       photoDataUrl: r.photo_data_url,
       loggedAt: r.logged_at,
+    }));
+  }
+
+  async fileReport(
+    profileId: number,
+    sceneId: string,
+    title: string,
+    summary: ReportSummary,
+  ): Promise<number> {
+    const db = await this.database();
+    const result = await db.execute(
+      "INSERT INTO reports (profile_id, scene_id, title, summary_json) VALUES ($1, $2, $3, $4)",
+      [profileId, sceneId, title, JSON.stringify(summary)],
+    );
+    return result.lastInsertId ?? 0;
+  }
+
+  async listReports(profileId: number): Promise<ReportRecord[]> {
+    const db = await this.database();
+    const rows = await db.select<
+      { id: number; scene_id: string; title: string; summary_json: string; filed_at: string }[]
+    >(
+      "SELECT id, scene_id, title, summary_json, filed_at FROM reports WHERE profile_id = $1 ORDER BY id DESC",
+      [profileId],
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      sceneId: r.scene_id,
+      title: r.title,
+      summary: JSON.parse(r.summary_json) as ReportSummary,
+      filedAt: r.filed_at,
+    }));
+  }
+
+  async awardCertificate(profileId: number, moduleId: string, title: string): Promise<number> {
+    const db = await this.database();
+    const result = await db.execute(
+      "INSERT INTO certificates (profile_id, module_id, title) VALUES ($1, $2, $3)",
+      [profileId, moduleId, title],
+    );
+    return result.lastInsertId ?? 0;
+  }
+
+  async listCertificates(profileId: number): Promise<CertificateRecord[]> {
+    const db = await this.database();
+    const rows = await db.select<
+      { id: number; module_id: string; title: string; issued_at: string }[]
+    >(
+      "SELECT id, module_id, title, issued_at FROM certificates WHERE profile_id = $1 ORDER BY id DESC",
+      [profileId],
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      moduleId: r.module_id,
+      title: r.title,
+      issuedAt: r.issued_at,
     }));
   }
 }
@@ -350,6 +423,52 @@ class LocalStorageBackend implements PersistenceBackend {
         loggedAt: e.loggedAt,
       }));
   }
+
+  async fileReport(
+    profileId: number,
+    sceneId: string,
+    title: string,
+    summary: ReportSummary,
+  ): Promise<number> {
+    const reports = this.read<(ReportRecord & { profileId: number })[]>("reports", []);
+    const report = {
+      id: this.nextId("reports"),
+      profileId,
+      sceneId,
+      title,
+      summary,
+      filedAt: new Date().toISOString(),
+    };
+    reports.push(report);
+    this.write("reports", reports);
+    return report.id;
+  }
+
+  async listReports(profileId: number): Promise<ReportRecord[]> {
+    return this.read<(ReportRecord & { profileId: number })[]>("reports", [])
+      .filter((r) => r.profileId === profileId)
+      .sort((a, b) => b.id - a.id);
+  }
+
+  async awardCertificate(profileId: number, moduleId: string, title: string): Promise<number> {
+    const certs = this.read<(CertificateRecord & { profileId: number })[]>("certificates", []);
+    const cert = {
+      id: this.nextId("certificates"),
+      profileId,
+      moduleId,
+      title,
+      issuedAt: new Date().toISOString(),
+    };
+    certs.push(cert);
+    this.write("certificates", certs);
+    return cert.id;
+  }
+
+  async listCertificates(profileId: number): Promise<CertificateRecord[]> {
+    return this.read<(CertificateRecord & { profileId: number })[]>("certificates", [])
+      .filter((c) => c.profileId === profileId)
+      .sort((a, b) => b.id - a.id);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -422,5 +541,43 @@ export class SaveManager {
 
   listHazardEntries(profileId: number, sceneId: string): Promise<HazardLogEntry[]> {
     return this.backend.listHazardEntries(profileId, sceneId);
+  }
+
+  fileReport(
+    profileId: number,
+    sceneId: string,
+    title: string,
+    summary: ReportSummary,
+  ): Promise<number> {
+    return this.backend.fileReport(profileId, sceneId, title, summary);
+  }
+
+  listReports(profileId: number): Promise<ReportRecord[]> {
+    return this.backend.listReports(profileId);
+  }
+
+  awardCertificate(profileId: number, moduleId: string, title: string): Promise<number> {
+    return this.backend.awardCertificate(profileId, moduleId, title);
+  }
+
+  listCertificates(profileId: number): Promise<CertificateRecord[]> {
+    return this.backend.listCertificates(profileId);
+  }
+
+  /** Small per-profile key-value store (scene flags, tutorial state, ...). */
+  async getValue(key: string): Promise<string | null> {
+    try {
+      return await this.backend.getSetting(key);
+    } catch {
+      return null;
+    }
+  }
+
+  async setValue(key: string, value: string): Promise<void> {
+    try {
+      await this.backend.setSetting(key, value);
+    } catch (err) {
+      console.error("Failed to persist value:", key, err);
+    }
   }
 }

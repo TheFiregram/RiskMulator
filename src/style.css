@@ -937,3 +937,228 @@ body.fallback-look #viewport {
 .matrix-legend > * { margin: 0 0.6rem 0.35rem 0; }
 .objective-list > * + * { margin-top: 0.5rem; }
 .objective > * + * { margin-left: 0.7rem; }
+
+/* ---------- Tablet sprint 2: learning, progress, reports, certificates ---------- */
+
+.learn-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.learn-list > * + * {
+  margin-top: 0.5rem;
+}
+
+.learn-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  background: #131a28;
+  border: 1px solid #232a38;
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.learn-row:hover {
+  background: #1a2334;
+  border-color: #33405a;
+}
+
+.learn-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.learn-blurb {
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.article-body {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.article-body p,
+.article-body ol,
+.article-body ul {
+  margin-bottom: 0.8rem;
+}
+
+.article-body ol,
+.article-body ul {
+  padding-left: 1.4rem;
+}
+
+.article-body li {
+  margin-bottom: 0.35rem;
+}
+
+.section-title {
+  margin: 1.1rem 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Progress */
+
+.progress-card {
+  padding: 1.1rem;
+  background: #131a28;
+  border: 1px solid #232a38;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.progress-rank {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.progress-points {
+  margin: 0.3rem 0 0.8rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.progress-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 0.9rem;
+  margin-bottom: 0.4rem;
+  background: #131a28;
+  border: 1px solid #232a38;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* Reports */
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.report-table th {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  border-bottom: 1px solid #232a38;
+}
+
+.report-table td {
+  padding: 0.45rem 0.5rem;
+  vertical-align: middle;
+}
+
+.report-num {
+  color: var(--text-dim);
+}
+
+.report-control-row td {
+  padding-top: 0;
+  padding-bottom: 0.7rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  border-bottom: 1px solid #1a2030;
+}
+
+/* Certificate */
+
+.certificate {
+  padding: 1.6rem 1.2rem;
+  background: #10151f;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.certificate-seal {
+  font-size: 2rem;
+  color: var(--accent);
+}
+
+.certificate-org {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.certificate-heading {
+  margin-top: 0.7rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.certificate-name {
+  margin-top: 0.8rem;
+  font-size: 1.05rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.certificate-course {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.certificate-module {
+  margin-top: 0.3rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.certificate-meta {
+  margin-top: 1rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.tablet-status-left {
+  display: flex;
+  align-items: center;
+}
+
+.tablet-home {
+  margin-right: 0.6rem;
+  padding: 0.1rem 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.tablet-home:hover {
+  background: rgba(255, 255, 255, 0.14);
+}

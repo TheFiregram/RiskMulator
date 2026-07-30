@@ -8,13 +8,16 @@ import {
   riskScore,
   type HazardClass,
 } from "@/tablet/risk";
-import { nextRank, rankLabel } from "@/tablet/career";
+import { CAREER_RANKS, nextRank, rankLabel } from "@/tablet/career";
+import { LEARNING_ARTICLES } from "@/tablet/learning";
 import type {
   AssessmentResult,
   AssessmentSubmission,
+  CertificateRecord,
   Grade,
   HazardLogEntry,
   ProfileRecord,
+  ReportRecord,
 } from "@/tablet/types";
 
 export interface TabletObjective {
@@ -26,11 +29,22 @@ export interface TabletData {
   profile: ProfileRecord;
   entries: HazardLogEntry[];
   objectives: TabletObjective[];
+  checklist: { label: string; done: boolean }[];
+  reports: ReportRecord[];
+  certificates: CertificateRecord[];
+  sceneName: string;
+  moduleTitle: string;
+  hazardTotal: number;
+  canFileReport: boolean;
+  reportFiled: boolean;
 }
 
 export interface TabletCallbacks {
   onClose(): void;
   onOpenCamera(): void;
+  onOpenSettings(): void;
+  /** Notified when a view opens (used for checklist flags like the matrix). */
+  onViewOpened(view: TabletView): void;
   getData(): TabletData;
   /** Control-measure choices for an entry's hazard (from the scene's hazard spec). */
   getControls(entry: HazardLogEntry): { id: string; label: string }[];
@@ -38,9 +52,25 @@ export interface TabletCallbacks {
     entryId: number,
     submission: AssessmentSubmission,
   ): Promise<AssessmentResult | null>;
+  /** Files the inspection report; resolves true when it was accepted. */
+  fileReport(): Promise<boolean>;
 }
 
-type TabletView = "home" | "log" | "classify" | "feedback" | "matrix" | "objectives";
+export type TabletView =
+  | "home"
+  | "log"
+  | "classify"
+  | "feedback"
+  | "matrix"
+  | "objectives"
+  | "checklist"
+  | "learning"
+  | "article"
+  | "progress"
+  | "reports"
+  | "report"
+  | "certificates"
+  | "certificate";
 
 /**
  * DOM overlay for the corporate inspection tablet. Pure presentation: all
@@ -54,6 +84,10 @@ export class TabletUI {
   private selection: Partial<AssessmentSubmission> = {};
   private lastResult: AssessmentResult | null = null;
   private submitting = false;
+  private articleId: string | null = null;
+  private reportId: number | null = null;
+  private certificateId: number | null = null;
+  private filing = false;
 
   constructor(uiRoot: HTMLElement, callbacks: TabletCallbacks) {
     this.callbacks = callbacks;
@@ -99,28 +133,63 @@ export class TabletUI {
     if (!target) return;
     const action = target.dataset.action!;
 
+    const goto = (view: TabletView) => {
+      this.view = view;
+      this.callbacks.onViewOpened(view);
+      this.render();
+    };
+
     switch (action) {
       case "close":
         this.callbacks.onClose();
         break;
       case "home":
-        this.view = "home";
-        this.render();
+        goto("home");
         break;
       case "open-camera":
         this.callbacks.onOpenCamera();
         break;
+      case "open-settings":
+        this.callbacks.onOpenSettings();
+        break;
       case "open-log":
-        this.view = "log";
-        this.render();
+        goto("log");
         break;
       case "open-matrix":
-        this.view = "matrix";
-        this.render();
+        goto("matrix");
         break;
       case "open-objectives":
-        this.view = "objectives";
-        this.render();
+        goto("objectives");
+        break;
+      case "open-checklist":
+        goto("checklist");
+        break;
+      case "open-learning":
+        goto("learning");
+        break;
+      case "open-article":
+        this.articleId = target.dataset.article ?? null;
+        goto("article");
+        break;
+      case "open-progress":
+        goto("progress");
+        break;
+      case "open-reports":
+        goto("reports");
+        break;
+      case "open-report":
+        this.reportId = Number(target.dataset.report);
+        goto("report");
+        break;
+      case "file-report":
+        void this.handleFileReport();
+        break;
+      case "open-certificates":
+        goto("certificates");
+        break;
+      case "open-certificate":
+        this.certificateId = Number(target.dataset.cert);
+        goto("certificate");
         break;
       case "classify": {
         this.classifyEntryId = Number(target.dataset.entry);
@@ -148,6 +217,20 @@ export class TabletUI {
       case "submit-assessment":
         void this.submit();
         break;
+    }
+  }
+
+  private async handleFileReport(): Promise<void> {
+    if (this.filing) return;
+    this.filing = true;
+    try {
+      const ok = await this.callbacks.fileReport();
+      if (ok) {
+        this.view = "reports";
+        this.render();
+      }
+    } finally {
+      this.filing = false;
     }
   }
 
@@ -205,13 +288,44 @@ export class TabletUI {
       case "objectives":
         body = this.renderObjectives(data);
         break;
+      case "checklist":
+        body = this.renderChecklist(data);
+        break;
+      case "learning":
+        body = this.renderLearning();
+        break;
+      case "article":
+        body = this.renderArticle();
+        break;
+      case "progress":
+        body = this.renderProgress(data);
+        break;
+      case "reports":
+        body = this.renderReports(data);
+        break;
+      case "report":
+        body = this.renderReport(data);
+        break;
+      case "certificates":
+        body = this.renderCertificates(data);
+        break;
+      case "certificate":
+        body = this.renderCertificate(data);
+        break;
     }
+
+    const homeButton =
+      this.view === "home"
+        ? ""
+        : `<button class="tablet-home" data-action="home" title="Home">&#8962;</button>`;
 
     this.overlay.innerHTML = `
       <div class="tablet-device">
         <div class="tablet-screen">
           <header class="tablet-status">
-            <span class="tablet-brand">RiskCorp Field Tablet</span>
+            <span class="tablet-status-left">
+              ${homeButton}<span class="tablet-brand">RiskCorp Field Tablet</span>
+            </span>
             <span class="tablet-profile">${rankLabel(data.profile.careerRank)} &bull; ${data.profile.totalPoints} pts</span>
           </header>
           <div class="tablet-body">${body}</div>
@@ -233,29 +347,213 @@ export class TabletUI {
   private renderHome(data: TabletData): string {
     const drafts = data.entries.filter((e) => e.status === "draft").length;
     const draftBadge = drafts > 0 ? `<span class="tile-badge">${drafts}</span>` : "";
+    const reportBadge = data.canFileReport ? `<span class="tile-badge">!</span>` : "";
     const app = (action: string, icon: string, label: string, badge = "") => `
       <button class="tablet-tile" data-action="${action}">
         <span class="tile-icon">${icon}</span>
         <span class="tile-label">${label}</span>${badge}
       </button>
     `;
-    const stub = (icon: string, label: string) => `
-      <div class="tablet-tile tablet-tile-disabled" title="Coming in a later sprint">
-        <span class="tile-icon">${icon}</span>
-        <span class="tile-label">${label}</span>
-        <span class="tile-soon">Soon</span>
-      </div>
-    `;
     return `
       <div class="tablet-grid">
         ${app("open-camera", "&#128247;", "Camera")}
         ${app("open-log", "&#128203;", "Hazard Log", draftBadge)}
         ${app("open-objectives", "&#127919;", "Objectives")}
+        ${app("open-checklist", "&#9745;", "Checklist")}
         ${app("open-matrix", "&#9638;", "Risk Matrix")}
-        ${stub("&#9745;", "Checklist")}
-        ${stub("&#128196;", "Reports")}
-        ${stub("&#128218;", "Learning")}
-        ${stub("&#127891;", "Certificates")}
+        ${app("open-reports", "&#128196;", "Reports", reportBadge)}
+        ${app("open-learning", "&#128218;", "Learning")}
+        ${app("open-progress", "&#128200;", "Progress")}
+        ${app("open-certificates", "&#127891;", "Certificates")}
+        ${app("open-settings", "&#9881;", "Settings")}
+      </div>
+    `;
+  }
+
+  private renderChecklist(data: TabletData): string {
+    const items = data.checklist
+      .map(
+        (c) => `
+        <div class="objective ${c.done ? "objective-done" : ""}">
+          <span class="objective-mark">${c.done ? "&#10004;" : "&#9675;"}</span>
+          <span>${c.label}</span>
+        </div>
+      `,
+      )
+      .join("");
+    const done = data.checklist.filter((c) => c.done).length;
+    return `
+      ${this.backBar("Inspection Checklist")}
+      <p class="tablet-note">${data.sceneName} &mdash; ${done}/${data.checklist.length} complete. Items tick off automatically as you work.</p>
+      <div class="objective-list">${items}</div>
+    `;
+  }
+
+  private renderLearning(): string {
+    const rows = LEARNING_ARTICLES.map(
+      (a) => `
+      <button class="learn-row" data-action="open-article" data-article="${a.id}">
+        <span class="learn-title">${a.title}</span>
+        <span class="learn-blurb">${a.blurb}</span>
+      </button>
+    `,
+    ).join("");
+    return `${this.backBar("Learning")}<div class="learn-list">${rows}</div>`;
+  }
+
+  private renderArticle(): string {
+    const article = LEARNING_ARTICLES.find((a) => a.id === this.articleId);
+    if (!article) return `${this.backBar("Learning")}<p class="tablet-empty">Article not found.</p>`;
+    return `
+      <div class="tablet-nav">
+        <button class="tablet-back" data-action="open-learning">&larr; Learning</button>
+        <h2>${article.title}</h2>
+      </div>
+      <div class="article-body">${article.body}</div>
+    `;
+  }
+
+  private renderProgress(data: TabletData): string {
+    const points = data.profile.totalPoints;
+    const next = nextRank(points);
+    const currentRank = rankLabel(data.profile.careerRank);
+    let bar = "";
+    if (next) {
+      const prev = CAREER_RANKS.filter((r) => r.minPoints <= points).pop()!;
+      const span = next.minPoints - prev.minPoints;
+      const pct = Math.min(100, Math.round(((points - prev.minPoints) / span) * 100));
+      bar = `
+        <div class="progress-track"><div class="progress-fill" style="width: ${pct}%"></div></div>
+        <p class="tablet-note">${next.minPoints - points} pts to ${next.label}</p>
+      `;
+    } else {
+      bar = `<p class="tablet-note">Top of the career ladder.</p>`;
+    }
+    const assessed = data.entries.filter((e) => e.status === "logged");
+    const quality =
+      assessed.length > 0
+        ? Math.round(
+            (assessed.reduce((sum, e) => sum + Math.max(0, e.points - 10), 0) /
+              (assessed.length * 50)) *
+              100,
+          )
+        : null;
+    const stat = (label: string, value: string) => `
+      <div class="stat-row"><span>${label}</span><strong>${value}</strong></div>
+    `;
+    return `
+      ${this.backBar("Progress")}
+      <div class="progress-card">
+        <div class="progress-rank">${currentRank}</div>
+        <div class="progress-points">${points} pts</div>
+        ${bar}
+      </div>
+      <h4 class="section-title">${data.sceneName}</h4>
+      ${stat("Hazards photographed", `${data.entries.length}/${data.hazardTotal}`)}
+      ${stat("Hazards assessed", `${assessed.length}/${data.hazardTotal}`)}
+      ${quality !== null ? stat("Assessment quality", `${quality}%`) : ""}
+      ${stat("Reports filed", String(data.reports.length))}
+      ${stat("Certificates", String(data.certificates.length))}
+    `;
+  }
+
+  private renderReports(data: TabletData): string {
+    let action = "";
+    if (data.reportFiled) {
+      action = `<p class="tablet-note">Inspection report for ${data.sceneName} has been filed.</p>`;
+    } else if (data.canFileReport) {
+      action = `
+        <p class="tablet-note">All hazards assessed. File your findings to complete the inspection.</p>
+        <button class="btn btn-primary tablet-submit" data-action="file-report">File Inspection Report</button>
+      `;
+    } else {
+      action = `<p class="tablet-note">Assess every hazard in the Hazard Log to unlock the inspection report.</p>`;
+    }
+    const rows = data.reports
+      .map(
+        (r) => `
+        <button class="learn-row" data-action="open-report" data-report="${r.id}">
+          <span class="learn-title">${r.title}</span>
+          <span class="learn-blurb">${r.summary.hazards.length} hazards &bull; filed ${r.filedAt.slice(0, 10)}</span>
+        </button>
+      `,
+      )
+      .join("");
+    return `
+      ${this.backBar("Reports")}
+      ${action}
+      ${rows ? `<h4 class="section-title">Filed reports</h4><div class="learn-list">${rows}</div>` : ""}
+    `;
+  }
+
+  private renderReport(data: TabletData): string {
+    const report = data.reports.find((r) => r.id === this.reportId);
+    if (!report) return `${this.backBar("Reports")}<p class="tablet-empty">Report not found.</p>`;
+    const rows = report.summary.hazards
+      .map(
+        (h) => `
+        <tr>
+          <td>${h.hazardName}</td>
+          <td>${hazardClassLabel(h.classification as HazardClass)}</td>
+          <td class="report-num">${h.likelihood}&times;${h.severity}</td>
+          <td><span class="chip chip-band-${riskBand(h.riskScore)}">${h.riskScore}</span></td>
+        </tr>
+        <tr class="report-control-row"><td colspan="4">&#8627; ${h.controlMeasure}</td></tr>
+      `,
+      )
+      .join("");
+    return `
+      <div class="tablet-nav">
+        <button class="tablet-back" data-action="open-reports">&larr; Reports</button>
+        <h2>${report.title}</h2>
+      </div>
+      <p class="tablet-note">Filed ${report.filedAt.slice(0, 10)} by ${report.summary.rankAtFiling} &bull; ${report.summary.pointsEarned} pts earned</p>
+      <table class="report-table">
+        <tr><th>Hazard</th><th>Class</th><th>L&times;S</th><th>Risk</th></tr>
+        ${rows}
+      </table>
+    `;
+  }
+
+  private renderCertificates(data: TabletData): string {
+    if (data.certificates.length === 0) {
+      return `
+        ${this.backBar("Certificates")}
+        <p class="tablet-empty">No certificates yet. Complete a training module — assess every hazard, then file the inspection report.</p>
+      `;
+    }
+    const rows = data.certificates
+      .map(
+        (c) => `
+        <button class="learn-row" data-action="open-certificate" data-cert="${c.id}">
+          <span class="learn-title">&#127891; ${c.title}</span>
+          <span class="learn-blurb">Issued ${c.issuedAt.slice(0, 10)}</span>
+        </button>
+      `,
+      )
+      .join("");
+    return `${this.backBar("Certificates")}<div class="learn-list">${rows}</div>`;
+  }
+
+  private renderCertificate(data: TabletData): string {
+    const cert = data.certificates.find((c) => c.id === this.certificateId);
+    if (!cert)
+      return `${this.backBar("Certificates")}<p class="tablet-empty">Certificate not found.</p>`;
+    return `
+      <div class="tablet-nav">
+        <button class="tablet-back" data-action="open-certificates">&larr; Certificates</button>
+        <h2>Certificate</h2>
+      </div>
+      <div class="certificate">
+        <div class="certificate-seal">&#9888;</div>
+        <div class="certificate-org">RiskCorp Training Academy</div>
+        <div class="certificate-heading">Certificate of Completion</div>
+        <div class="certificate-name">${data.profile.name}</div>
+        <div class="certificate-course">has completed the module</div>
+        <div class="certificate-module">${cert.title}</div>
+        <div class="certificate-meta">
+          Issued ${cert.issuedAt.slice(0, 10)} &bull; Rank: ${rankLabel(data.profile.careerRank)} &bull; No. ${String(cert.id).padStart(4, "0")}
+        </div>
       </div>
     `;
   }

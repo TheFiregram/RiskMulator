@@ -4,13 +4,16 @@ import type { Engine } from "@/core/Engine";
 import { PlayerController } from "@/player/PlayerController";
 import { InteractionSystem } from "@/player/InteractionSystem";
 import type { GameSettings, Interactable } from "@/core/types";
-import type { HazardSpec } from "@/tablet/types";
+import type { ChecklistItemSpec, HazardSpec } from "@/tablet/types";
 
 const ROOM_SIZE = 20;
 const WALL_HEIGHT = 4;
 
 export class WhiteRoomScene extends GameScene {
   readonly id = "white_room";
+  readonly displayName = "Training Academy";
+  readonly moduleId = "training_academy_basic";
+  readonly moduleTitle = "Basic Hazard Recognition";
 
   readonly player: PlayerController;
   readonly interaction: InteractionSystem;
@@ -18,8 +21,21 @@ export class WhiteRoomScene extends GameScene {
   /** Fired when an interactable wants to show a message to the player. */
   onShowMessage?: (title: string, body: string) => void;
 
+  /** Fired when the player reads the welcome kiosk. */
+  onBriefingRead?: () => void;
+
   /** Hazards the player can photograph and assess on the tablet. */
   readonly hazards: HazardSpec[] = [];
+
+  /** Inspection checklist shown on the tablet; items auto-complete. */
+  readonly checklist: ChecklistItemSpec[] = [
+    { id: "briefing", label: "Attend the safety briefing at the kiosk", kind: "flag", flagId: "briefing_read" },
+    { id: "photo_spill", label: "Photograph the liquid spill", kind: "photo", hazardId: "wet_floor" },
+    { id: "photo_cable", label: "Photograph the damaged extension cable", kind: "photo", hazardId: "damaged_cable" },
+    { id: "assess_spill", label: "Assess the spill in the Hazard Log", kind: "assess", hazardId: "wet_floor" },
+    { id: "assess_cable", label: "Assess the cable in the Hazard Log", kind: "assess", hazardId: "damaged_cable" },
+    { id: "matrix", label: "Review the 5×5 risk matrix", kind: "flag", flagId: "matrix_viewed" },
+  ];
 
   private colliders: THREE.Box3[] = [];
 
@@ -146,11 +162,13 @@ export class WhiteRoomScene extends GameScene {
     this.registerInteractable({
       object: kiosk,
       prompt: "Read welcome briefing",
-      onInteract: () =>
+      onInteract: () => {
+        this.onBriefingRead?.();
         this.onShowMessage?.(
           "Welcome to the Training Academy",
-          "This room contains workplace hazards. Press Tab to open your inspection tablet, use the Camera to photograph anything that could cause harm, then assess each find in the Hazard Log: classify it, rate likelihood and severity, and recommend a control measure. Check Objectives on the tablet to track your progress.",
-        ),
+          "This room contains workplace hazards. Press Tab to open your inspection tablet, use the Camera to photograph anything that could cause harm, then assess each find in the Hazard Log: classify it, rate likelihood and severity, and recommend a control measure. Work through the Checklist, then file your findings from the Reports app to earn your certificate.",
+        );
+      },
     });
   }
 

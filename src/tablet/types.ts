@@ -53,6 +53,43 @@ export interface HazardLogEntry {
   loggedAt: string;
 }
 
+/** One checklist line for a scene; done-ness derives from gameplay state. */
+export type ChecklistItemSpec =
+  | { id: string; label: string; kind: "photo" | "assess"; hazardId: string }
+  | { id: string; label: string; kind: "flag"; flagId: string };
+
+export interface ReportHazardLine {
+  hazardName: string;
+  classification: string;
+  likelihood: number;
+  severity: number;
+  riskScore: number;
+  controlMeasure: string;
+  points: number;
+}
+
+export interface ReportSummary {
+  sceneName: string;
+  rankAtFiling: string;
+  pointsEarned: number;
+  hazards: ReportHazardLine[];
+}
+
+export interface ReportRecord {
+  id: number;
+  sceneId: string;
+  title: string;
+  summary: ReportSummary;
+  filedAt: string;
+}
+
+export interface CertificateRecord {
+  id: number;
+  moduleId: string;
+  title: string;
+  issuedAt: string;
+}
+
 /** What the player submits from the tablet's assessment form. */
 export interface AssessmentSubmission {
   classification: HazardClass;

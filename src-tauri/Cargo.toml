@@ -1,6 +1,6 @@
 [package]
 name = "riskmulator"
-version = "0.2.2"
+version = "0.3.0"
 description = "Offline-first desktop training simulator for workplace risk management"
 authors = ["RiskMulator Team"]
 edition = "2021"

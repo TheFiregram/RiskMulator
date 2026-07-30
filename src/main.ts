@@ -42,6 +42,7 @@ class Game {
           void this.engagePointerLock();
         }
       },
+      onReturnToTablet: () => this.tablet.reopenAfterSettings(),
     });
 
     this.tablet = new TabletSystem(uiRoot, this.save, this.engine, {
@@ -60,6 +61,7 @@ class Game {
       setCameraMode: (on) => this.ui.setCameraMode(on),
       flashCapture: () => this.ui.flashCapture(),
       showToast: (text) => this.ui.showToast(text),
+      openSettings: () => this.ui.showSettings("tablet"),
     });
 
     this.bindTabletInput();
@@ -159,9 +161,17 @@ class Game {
       this.engine.input.setFallbackLook(false);
     };
     room.interaction.onFocusChange = (i) => this.ui.setInteractPrompt(i ? i.prompt : null);
+    room.onBriefingRead = () => void this.tablet.setFlag("briefing_read");
 
     await room.load((f) => this.ui.setLoadingProgress(f));
-    await this.tablet.startSession(room.id, room.hazards);
+    await this.tablet.startSession({
+      sceneId: room.id,
+      sceneName: room.displayName,
+      moduleId: room.moduleId,
+      moduleTitle: room.moduleTitle,
+      hazards: room.hazards,
+      checklist: room.checklist,
+    });
 
     this.room = room;
     this.engine.setScene(room);

@@ -7,13 +7,15 @@ export interface UICallbacks {
   onQuitApp(): void;
   onSettingsChanged(settings: GameSettings): void;
   onMessageClosed(): void;
+  /** Settings screen closed after being opened from the tablet. */
+  onReturnToTablet(): void;
 }
 
 export class UIManager {
   private root: HTMLElement;
   private callbacks: UICallbacks;
   private settings: GameSettings;
-  private settingsReturnTo: "menu" | "pause" = "menu";
+  private settingsReturnTo: "menu" | "pause" | "tablet" = "menu";
 
   constructor(root: HTMLElement, settings: GameSettings, callbacks: UICallbacks) {
     this.root = root;
@@ -55,7 +57,7 @@ export class UIManager {
     this.showOnly("screen-pause");
   }
 
-  showSettings(returnTo: "menu" | "pause"): void {
+  showSettings(returnTo: "menu" | "pause" | "tablet"): void {
     this.settingsReturnTo = returnTo;
     this.syncSettingsForm();
     this.showOnly("screen-settings");
@@ -153,7 +155,11 @@ export class UIManager {
       this.settings = settings;
       this.callbacks.onSettingsChanged(settings);
       if (this.settingsReturnTo === "menu") this.showMainMenu();
-      else this.showPause();
+      else if (this.settingsReturnTo === "pause") this.showPause();
+      else {
+        this.showHUD();
+        this.callbacks.onReturnToTablet();
+      }
     });
 
     on("btn-message-close", () => {

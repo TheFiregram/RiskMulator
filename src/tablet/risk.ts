@@ -80,6 +80,9 @@ const POINTS = {
 /** Points for photographing a not-yet-logged hazard. */
 export const POINTS_HAZARD_FOUND = 10;
 
+/** Bonus for filing the inspection report once every hazard is assessed. */
+export const POINTS_REPORT_FILED = 25;
+
 /** Maximum points a single assessment can award (excludes the photo bonus). */
 export const POINTS_ASSESSMENT_MAX =
   POINTS.classificationExact + POINTS.scaleExact * 2 + POINTS.controlBest;
